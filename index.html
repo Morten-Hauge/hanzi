@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Icons (files in /public). Vite adds the /hanzi/ base to these paths
+         in the build. -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#070d16" />
+    <!-- Dark UI from the first paint (no white flash, dark scrollbars). -->
+    <meta name="color-scheme" content="dark" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Title and canonical are updated per page by the router
+         (src/router/index.js); these are the start page's. -->
+    <title>Hànzì – Chinese character practice</title>
+    <meta
+      name="description"
+      content="Learn 30 of the most common Chinese characters with quick quizzes on pinyin, meaning and characters, with audio pronunciation."
+    />
+    <meta name="author" content="Morten Hauge" />
+    <link rel="canonical" href="https://www.morten-hauge.com/hanzi/" />
+
+    <!-- Link previews (Facebook, LinkedIn, Slack, iMessage, …). These need
+         full URLs, since other sites fetch them. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Hànzì" />
+    <meta property="og:title" content="Hànzì – Chinese character practice" />
+    <meta
+      property="og:description"
+      content="Learn 30 of the most common Chinese characters with quick quizzes on pinyin, meaning and characters, with audio pronunciation."
+    />
+    <meta property="og:url" content="https://www.morten-hauge.com/hanzi/" />
+    <meta
+      property="og:image"
+      content="https://www.morten-hauge.com/hanzi/share_image.jpg"
+    />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Hànzì – Chinese character practice" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- X/Twitter: large image card (falls back to the og: tags above). -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Hànzì – Chinese character practice" />
+    <meta
+      name="twitter:description"
+      content="Learn 30 of the most common Chinese characters with quick quizzes on pinyin, meaning and characters, with audio pronunciation."
+    />
+    <meta
+      name="twitter:image"
+      content="https://www.morten-hauge.com/hanzi/share_image.jpg"
+    />
+    <meta name="twitter:image:alt" content="Hànzì – Chinese character practice" />
+
+    <!-- Structured data for search engines: a free educational web app. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Hànzì",
+        "alternateName": "Hànzì – Chinese character practice",
+        "url": "https://www.morten-hauge.com/hanzi/",
+        "description": "Learn 30 of the most common Chinese characters with quick quizzes on pinyin, meaning and characters, with audio pronunciation.",
+        "image": "https://www.morten-hauge.com/hanzi/share_image.jpg",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any",
+        "inLanguage": "en",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": {
+          "@type": "Person",
+          "name": "Morten Hauge",
+          "url": "https://morten-hauge.com"
+        }
+      }
+    </script>
+
+    <!-- Fonts are self-hosted: src/assets/fonts (scripts/fetch-fonts.mjs). -->
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- For browsers and crawlers that don't run JavaScript. -->
+    <noscript>
+      <h1>Hànzì – Chinese character practice</h1>
+      <p>
+        Learn 30 of the most common Chinese characters with quick quizzes on
+        pinyin, meaning and characters, with audio pronunciation. This app
+        needs JavaScript to run.
+      </p>
+    </noscript>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

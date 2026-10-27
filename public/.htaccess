@@ -1,0 +1,14 @@
+# Hànzì is a single-page app: every page (e.g. /hanzi/quiz/english) is drawn
+# by index.html in the browser. Links to pages that aren't real files are
+# sent to index.html, so opening or refreshing them doesn't give a 404.
+# (Apache servers; needs mod_rewrite, which most hosts have enabled.)
+# The build also writes a real copy of index.html for each page
+# (vite.config.js), so the pages work even where these rules are ignored.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /hanzi/
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /hanzi/index.html [L]
+</IfModule>

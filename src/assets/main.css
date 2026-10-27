@@ -1,0 +1,2527 @@
+:root{
+  --bg-color: #060E16;
+  --active-color: #e04609;
+  --bg-hanzi: #D8DBE6;
+  --text-hanzi: #0C1E30;
+  --bg-interaction: #08141F;
+  --tab-inactive: #13253D;
+  --tab-inactive-hover: #1A3150;
+  --correct-color: #4F7D32;
+  --wrong-color: #a62a17;
+  /* Orange behind white button text: a deeper --active-color, for at least
+     4.5:1 contrast (white on #e04609 is only 4.2:1). */
+  --cta-color: #cc3f07;
+  /* Red for small graphics on the dark page (summary result strip): at
+     least 3:1 against it, which --wrong-color isn't. */
+  --wrong-mark-color: #c4402a;
+  /* Height of the top bar (1rem padding + 52px switch on mobile; a fixed
+     slim bar on desktop). Used to keep sliding pages aligned under it. */
+  --header-h: calc(1rem + 52px);
+  /* Height of the footer under every page. Pages fill the screen minus
+     header and footer, so a short page keeps the footer at the bottom.
+     Set from the footer's measured height by AppFooter.vue; this is only
+     the starting value. */
+  --footer-h: 4.25rem;
+  /* Pinyin tone colours (1st–4th, 5 = neutral), shades for light
+     backgrounds: at least 4.5:1 contrast on white. Used by the teach
+     splash (.tone-1 … .tone-5). */
+  --tone-1: #c93a2f;
+  --tone-2: #ad5f00;
+  --tone-3: #2e7d32;
+  --tone-4: #1f6dbf;
+  --tone-5: #66707d;
+}
+
+body{
+  background: var(--bg-color);
+  color: #FFF;
+  margin: 0;
+}
+
+/****************************************************************** HANZI */
+
+.hanzi-container {
+  text-align: center;
+  margin: 2rem 0 2rem 0;
+  /* Keeps the sliding cards from causing a horizontal scrollbar. */
+  overflow-x: clip;
+}
+
+/* Space is reserved so the layout doesn't jump when the answer is revealed. */
+.reveal {
+  min-height: 4rem;
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  font-family: "Nunito Sans", sans-serif;
+}
+
+.reveal-main {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--bg-hanzi);
+}
+
+.reveal-hanzi {
+  font-family: "Shippori Mincho", serif;
+  font-size: 2.2rem;
+  line-height: 1;
+}
+
+/* Below 1024px: only the current mode's answer, in the main style, and less
+   space reserved under the card. */
+@media (max-width: 1023px) {
+  .reveal {
+    min-height: 2.5rem;
+    margin-top: 0.75rem;
+  }
+
+  /* Same space below the answer as above it (the reveal's margin-top). */
+  .hanzi-container {
+    margin-bottom: 0.75rem;
+  }
+
+  .reveal-extra {
+    display: none;
+  }
+
+  .reveal-sub.reveal-answer {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    color: var(--bg-hanzi);
+    opacity: 1;
+  }
+}
+
+.reveal-sub {
+  font-size: 1rem;
+  letter-spacing: 0.05rem;
+  opacity: 0.8;
+}
+
+.hanzi {
+  font-size: 10rem;
+  line-height: 10rem;
+  font-family: "Shippori Mincho", serif;
+  font-weight: 500;
+  font-style: normal;
+
+  display: inline-block;
+  padding: 1rem 2rem 2rem 2rem;
+  /* The paper texture from the ink-wash splash (colour while it loads). */
+  background: #f2eee4 url("./paper.jpg") center / cover;
+  color: var(--text-hanzi);
+  border-radius: 1rem;
+  box-shadow: 0 0 0 0.4rem transparent;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Meaning → Character: the card shows a word, sized to match the
+   character card so switching modes doesn't move the layout. */
+.hanzi-meaning {
+  font-family: "Nunito Sans", sans-serif;
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  height: 10rem;
+  min-width: 10rem;
+  /* Card width incl. padding never exceeds the screen minus a margin. */
+  max-width: calc(100vw - 6rem);
+  /* Even padding (same total as the character card's 1rem + 2rem), so the
+     word sits in the true centre. */
+  padding: 1.5rem 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: content-box;
+}
+
+/* A ring instead of a border, so the card doesn't change size. */
+.hanzi-correct {
+  box-shadow: 0 0 0 0.4rem var(--correct-color);
+}
+
+/* Old and new card share one grid cell, so they can cross over
+   without the layout jumping. */
+.hanzi-stage {
+  display: grid;
+  justify-items: center;
+}
+
+.hanzi-stage > .hanzi {
+  grid-area: 1 / 1;
+}
+
+/* Card swap: old card slides out left, new card slides in from the right. */
+.card-leave-active {
+  transition: transform 0.2s ease-in, opacity 0.2s ease-in;
+}
+
+.card-enter-active {
+  transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) 0.1s,
+    opacity 0.35s ease 0.1s;
+}
+
+.card-leave-to {
+  opacity: 0;
+  transform: translateX(-4rem) rotate(-4deg) scale(0.95);
+}
+
+.card-enter-from {
+  opacity: 0;
+  transform: translateX(4rem) rotate(4deg) scale(0.95);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-leave-to,
+  .card-enter-from {
+    transform: none;
+  }
+}
+
+/****************************************************************** PROGRESS */
+
+.progress {
+  width: 85%;
+  margin: 1.5rem auto 0 auto;
+  font-family: "Nunito Sans", sans-serif;
+}
+
+.progress-label {
+  font-size: 0.8rem;
+  letter-spacing: 0.1rem;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  opacity: 0.8;
+}
+
+/* "Card 4 of 15" on mobile, "4 / 15" on desktop. */
+.progress-text-short {
+  display: none;
+}
+
+/* The unfilled part uses the lighter tab blue so the bar is clearly
+   visible against the page. */
+.progress-track {
+  height: 0.4rem;
+  background: var(--tab-inactive);
+  border-radius: 0.2rem;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: var(--active-color);
+  transition: width 0.3s ease;
+}
+
+/****************************************************************** INTERACTION CONTAINER */
+
+.interaction-container {
+  background: var(--bg-interaction);
+  padding: 2rem 1rem;
+  border-radius: 1rem;
+  width: 85%;
+  margin: 0 auto 3rem auto;
+}
+
+.interaction-container.finished {
+  margin-top: 2rem;
+}
+
+/****************************************************************** MODE TABS */
+
+/* Folder-style tabs forming the top edge of the answer panel (the same
+   component and look on mobile and desktop). The tab row is the inactive
+   colour; a panel-coloured indicator sits behind the active tab, so it
+   reads as connected to the answers below, and slides to the new tab when
+   the mode changes (like the Quiz/Study switch). Pulled out over the
+   panel's padding to sit flush. */
+.mode-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: -2rem -1rem 2rem -1rem;
+  border-radius: 1rem 1rem 0 0;
+  overflow: hidden;
+  background: var(--tab-inactive);
+  /* Inner shadow makes the inactive tabs look recessed behind the active
+     one (the indicator covers it under the active tab). */
+  box-shadow: inset 0 -8px 12px -6px rgba(0, 0, 0, 0.45);
+  font-family: "Nunito Sans", sans-serif;
+}
+
+.mode-tabs-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(100% / 3);
+  background: var(--bg-interaction);
+  /* Shadow on the neighbouring tabs' edges facing the active one. */
+  box-shadow: 0 0 12px -2px rgba(0, 0, 0, 0.45);
+  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* The flared bottom corners: panel colour with a quarter circle cut out,
+   so the neighbouring tabs look rounded where they meet the active tab. */
+.mode-tabs-indicator::before,
+.mode-tabs-indicator::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: 1rem;
+  height: 1rem;
+}
+
+.mode-tabs-indicator::before {
+  right: 100%;
+  background: radial-gradient(
+    circle at 0 0,
+    transparent 1rem,
+    var(--bg-interaction) calc(1rem + 0.5px)
+  );
+}
+
+.mode-tabs-indicator::after {
+  left: 100%;
+  background: radial-gradient(
+    circle at 100% 0,
+    transparent 1rem,
+    var(--bg-interaction) calc(1rem + 0.5px)
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-tabs-indicator {
+    transition: none;
+  }
+}
+
+.mode-tab {
+  position: relative; /* above the indicator */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 1.5rem 0.5rem;
+  text-align: center;
+  text-decoration: none;
+  color: #fff;
+  transition: background 0.3s ease;
+}
+
+.mode-tab-label {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.1rem;
+  text-transform: uppercase;
+}
+
+.mode-tab-hint {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Hover: the inactive tab gets a little lighter, keeping its recessed
+   shadow (and the rounded corner next to the active tab). */
+.mode-tab:not(.mode-tab-active):hover {
+  background: var(--tab-inactive-hover);
+  box-shadow: inset 0 -8px 12px -6px rgba(0, 0, 0, 0.45);
+}
+
+.tab-before-active {
+  border-bottom-right-radius: 1rem;
+}
+
+.tab-after-active {
+  border-bottom-left-radius: 1rem;
+}
+
+.mode-tab:focus-visible {
+  outline: 2px solid var(--active-color);
+  outline-offset: -2px;
+}
+
+/* Smaller labels on phones so "CHARACTER" fits in a third of the width. */
+@media (max-width: 600px) {
+  .mode-tab-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.05rem;
+  }
+}
+
+/****************************************************************** BUTTONS */
+
+.button-container{
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.button{
+  font-family: "Nunito Sans", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  font-variation-settings: "wdth" 100, "YTLC" 500;
+
+  background: none;
+  border: none;
+
+  color: #fff;
+  font-size: 0.8rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  outline: 1px solid var(--active-color);
+  transition: background 0.5s;
+}
+
+.button:not(:disabled) {
+  cursor: pointer;
+}
+
+.option {
+  position: relative;
+  font-size: 1.1rem;
+}
+
+.option-key {
+  position: absolute;
+  left: 0.6rem;
+  top: 0.4rem;
+  /* Set explicitly: <kbd> defaults to monospace, and character answers
+     use the serif font. */
+  font-family: "Nunito Sans", sans-serif;
+  font-size: 0.65rem;
+  opacity: 0.5;
+}
+
+/* ✓ / ✗ on answered options (QuizOptions.vue). Mobile: top-right corner,
+   like the number in the top-left. Desktop: at the right end (below). */
+.option-mark {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.45rem;
+  display: flex;
+}
+
+.option-mark svg {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.option-dimmed {
+  opacity: 0.4;
+}
+
+.next-button {
+  width: 100%;
+  margin-top: 1rem;
+  font-size: 1rem;
+  letter-spacing: 0.1rem;
+  text-transform: uppercase;
+  background: var(--cta-color);
+  transition: filter 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Hover only on devices with a real pointer, so it can't stick after a
+   tap on touch screens. */
+@media (hover: hover) {
+  /* Darkens rather than lightens, so the white text keeps its contrast. */
+  .next-button:hover {
+    filter: brightness(0.92);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(224, 70, 9, 0.35);
+  }
+}
+
+.next-button:active {
+  filter: brightness(0.85);
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.next-button:focus-visible {
+  outline: 2px solid var(--active-color);
+  outline-offset: 3px;
+}
+
+.button-correct {
+  background: var(--correct-color) !important;
+  color: #fff !important;
+  outline-color: var(--correct-color);
+  transition: background 0.3s;
+}
+
+.button-wrong {
+  background: var(--wrong-color) !important;
+  color: #fff !important;
+  outline-color: var(--wrong-color);
+  transition: background 0.3s;
+}
+/* Meaning → Character: the options are characters. */
+.option-hanzi {
+  font-family: "Shippori Mincho", serif;
+  font-size: 2.4rem;
+  /* CJK glyphs are drawn centred in their em box; line-height 1 makes the
+     line box equal that box so the character is truly centred. */
+  line-height: 1;
+  padding: 1.1rem 0.6rem;
+}
+
+/****************************************************************** SUMMARY */
+
+/* Stacked below 1024px: head (score, strip, stats), review grid, buttons.
+   The desktop two-column version is in the DESKTOP block at the end. */
+.summary {
+  display: grid;
+  grid-template-areas:
+    "head"
+    "review"
+    "actions";
+  gap: 1.75rem;
+  font-family: "Nunito Sans", sans-serif;
+  text-align: center;
+}
+
+.summary-head {
+  grid-area: head;
+}
+
+.summary-review {
+  grid-area: review;
+}
+
+.summary-actions {
+  grid-area: actions;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.summary-label
+{
+  margin: 0 0 0.75rem 0;
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.summary-review-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  /* opacity: 0.75; */
+}
+
+.summary-score {
+  margin: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.summary-score-number {
+  font-size: 4rem;
+  font-weight: 600;
+}
+
+.summary-caption {
+  margin: 0.4rem 0 0 0;
+  opacity: 0.7;
+}
+
+/* One block per card, in session order. */
+.result-strip {
+  list-style: none;
+  padding: 0;
+  margin: 1.25rem 0 0 0;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+.result-block {
+  flex: 0 1 1.4rem;
+  min-width: 6px;
+  height: 1.1rem;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ✓ / ✗ inside each block. */
+.result-block svg {
+  width: 0.7rem;
+  height: 0.7rem;
+  flex: none;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.result-correct {
+  background: var(--correct-color);
+}
+
+.result-missed {
+  background: var(--wrong-mark-color);
+}
+
+.summary-stats {
+  margin: 1.25rem 0 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+/* Number above its label. Only the visual order is flipped: in the markup
+   the label (dt) still comes first, so screen readers read "Correct, 12". */
+.stat-tile {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  padding: 0.75rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  outline: 1px solid rgba(216, 219, 230, 0.12);
+}
+
+.stat-tile dt {
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.stat-tile dd {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+/* Missed characters as mini cards; tap/click plays the pronunciation. */
+.review-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+  gap: 0.75rem;
+}
+
+.review-card {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.7rem 0.5rem;
+  border: none;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  outline: 1px solid rgba(216, 219, 230, 0.12);
+  color: #fff;
+  font-family: inherit;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.2s, outline-color 0.2s, transform 0.2s,
+    box-shadow 0.2s;
+}
+
+button.review-card {
+  cursor: pointer;
+}
+
+@media (hover: hover) {
+  button.review-card:hover {
+    outline-color: var(--active-color);
+    background: rgba(255, 255, 255, 0.06);
+    transform: translateY(-1px);
+  }
+}
+
+button.review-card:focus-visible {
+  outline: 2px solid var(--active-color);
+  box-shadow: 0 0 0 5px rgba(224, 70, 9, 0.25);
+}
+
+.review-hanzi {
+  font-family: "Shippori Mincho", serif;
+  font-size: 52px;
+  line-height: 1;
+  color: var(--bg-hanzi);
+}
+
+.review-pinyin {
+  margin-top: 0.3rem;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.review-english {
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.summary-clean {
+  margin: 0;
+  padding: 0.9rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(79, 125, 50, 0.2);
+  color: #d4e8c6;
+  font-weight: 600;
+}
+
+.summary-button {
+  width: 100%;
+  min-height: 3.25rem;
+  margin-top: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  font-size: 1rem;
+  letter-spacing: 0.1rem;
+  text-transform: uppercase;
+}
+
+/* Secondary: outline only, highlighted like the quiz options. */
+.summary-secondary {
+  background: transparent;
+  outline: 1px solid rgba(216, 219, 230, 0.25);
+  transition: background 0.2s, outline-color 0.2s, transform 0.2s,
+    box-shadow 0.2s;
+}
+
+@media (hover: hover) {
+  .summary-secondary:hover {
+    outline-color: var(--active-color);
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateY(-1px);
+  }
+}
+
+.summary-secondary:focus-visible {
+  outline: 2px solid var(--active-color);
+  box-shadow: 0 0 0 5px rgba(224, 70, 9, 0.25);
+}
+
+/****************************************************************** SPEAKER */
+
+.hanzi {
+  position: relative;
+}
+
+/* 44px tap target in the card's top-right corner. */
+.speaker-button {
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  /* Same navy as the character on the card. */
+  color: var(--text-hanzi);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.speaker-button:hover,
+.speaker-button:focus-visible {
+  background: rgba(12, 30, 48, 0.08);
+}
+
+/****************************************************************** LOGO */
+
+/* The brush-lettering logo, used in the desktop header and on the splash.
+   The SVG is black artwork, so it's used as a mask filled with the current
+   text colour: set `color` and a height (or width) where it's used.
+   To swap the file, change both url()s and set aspect-ratio to the new
+   file's viewBox width / height. */
+.logo-mark {
+  display: block;
+  aspect-ratio: 608.46 / 327.89; /* Hanzi_v2.svg viewBox */
+  background: currentColor;
+  -webkit-mask: url("./Hanzi_v2.svg") center / contain no-repeat;
+  mask: url("./Hanzi_v2.svg") center / contain no-repeat;
+}
+
+/* Text only for screen readers. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/****************************************************************** APP SWITCH (QUIZ / BROWSE) */
+
+/* Logo left, Quiz/Study switch right, lined up with the content's edges
+   (85% wide below 1024px; 1rem from the screen edge on phones). */
+.app-header {
+  padding: 1rem 0 0 0;
+}
+
+.app-header-inner {
+  width: 85%;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+@media (max-width: 600px) {
+  .app-header {
+    padding: 1rem 1rem 0 1rem;
+  }
+
+  .app-header-inner {
+    width: auto;
+  }
+}
+
+.app-logo {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* White logo (see LOGO for the file itself). */
+.app-logo-mark {
+  height: 36px;
+  color: #fff;
+}
+
+.app-logo:focus-visible {
+  outline: 2px solid var(--active-color);
+  outline-offset: 4px;
+  border-radius: 0.25rem;
+}
+
+.app-switch {
+  position: relative;
+  display: inline-flex;
+  padding: 0.25rem;
+  gap: 0.25rem;
+  background: var(--tab-inactive);
+  border-radius: 999px;
+}
+
+/* Highlight that slides between the two (equal-width) options. */
+.app-switch-indicator {
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  left: 0.25rem;
+  width: calc(50% - 0.375rem);
+  border-radius: 999px;
+  background: var(--bg-interaction);
+  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.app-switch-indicator-right {
+  transform: translateX(calc(100% + 0.25rem));
+}
+
+.app-switch-link {
+  font-family: "Nunito Sans", sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.1rem;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: #fff;
+  min-height: 44px;
+  min-width: 6.5rem;
+  flex: 1 1 0;
+  position: relative; /* above the sliding indicator */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+}
+
+/* Narrower options on the smallest phones, so logo and switch fit. */
+@media (max-width: 360px) {
+  .app-switch-link {
+    min-width: 5rem;
+  }
+}
+
+.app-switch-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.app-switch-active {
+  opacity: 1;
+}
+
+.app-switch-active:hover {
+  opacity: 1;
+  text-decoration: none;
+}
+
+/****************************************************************** FOOTER */
+
+/* Same edges as the header: 85% wide, 1rem from the screen edge on phones,
+   1100px centred on desktop. */
+.app-footer {
+  position: relative; /* above sliding pages, like the header */
+  z-index: 3;
+  padding: 2rem 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  background: var(--bg-interaction);
+  font-family: "Nunito Sans", sans-serif;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 1);
+}
+
+.app-footer-inner {
+  width: 85%;
+  margin: 0 auto;
+  padding: 0.75rem 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+/* Title on its own line above the credit. */
+.app-footer-about {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.app-footer-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* Same colour as the footer text; underlined on hover (and keyboard focus). */
+/* Same colour as the footer text, so it's always underlined (a link must
+   be recognisable without relying on colour); the underline is subtle and
+   turns solid on hover/focus. */
+.app-footer a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  text-decoration-color: rgba(255, 255, 255, 0.5);
+}
+
+.app-footer a:hover,
+.app-footer a:focus-visible {
+  text-decoration-color: currentColor;
+}
+
+.app-footer a:focus-visible {
+  outline: 2px solid var(--active-color);
+  outline-offset: 2px;
+  border-radius: 0.15rem;
+}
+
+@media (max-width: 600px) {
+  .app-footer-inner {
+    width: calc(100% - 2rem);
+  }
+}
+
+@media (min-width: 1024px) {
+  /* Sides only, so the top/bottom padding above still applies. */
+  .app-footer {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+
+  .app-footer-inner {
+    width: 100%;
+    max-width: 1100px;
+  }
+}
+
+/****************************************************************** SCROLLBAR */
+
+/* Quiz and Study keep room for a scrollbar, whether or not they scroll,
+   so the width never changes between them (no sideways jump). The splash
+   opts out below.
+   (scrollbar-gutter is ignored while overflow is the default "visible".)
+   Has no effect with overlay scrollbars (phones, macOS trackpad default). */
+html {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  /* Solid track in the page colour: browsers otherwise draw the empty room
+     as a translucent grey track, a visible stripe on the dark pages.
+     (thumb, track) */
+  scrollbar-color: #2b3d52 var(--bg-color);
+}
+
+/* The splash (set by App.vue) shows no scrollbar and keeps no room for
+   one. It can still be scrolled (wheel, trackpad, keys, touch) when it's
+   taller than the window. */
+html.splash-scrollbar {
+  scrollbar-width: none;
+}
+
+/****************************************************************** PAGE TRANSITIONS */
+
+/* Native-style push/pop between Quiz and Study: the new page slides in
+   from the right over the old one, which drifts left and dims (and the
+   reverse when going back). The leaving page is taken out of the flow so
+   both can overlap. */
+.route-stage {
+  position: relative;
+  overflow-x: clip;
+}
+
+.page {
+  display: flow-root; /* keeps child margins inside, so nothing jumps */
+  /* Fills the screen below the header, so a short page still fully covers
+     the one beneath it while sliding. */
+  min-height: calc(100vh - var(--header-h) - var(--footer-h));
+  min-height: calc(100svh - var(--header-h) - var(--footer-h));
+  background: var(--bg-color);
+}
+
+.push-enter-active,
+.push-leave-active,
+.pop-enter-active,
+.pop-leave-active {
+  transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1),
+    filter 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.push-leave-active,
+.pop-leave-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+/* The page on top: the incoming one on push, the outgoing one on pop. */
+.push-enter-active,
+.pop-leave-active {
+  z-index: 2;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.35);
+}
+
+.push-enter-from,
+.pop-leave-to {
+  transform: translateX(100%);
+}
+
+.push-leave-to,
+.pop-enter-from {
+  transform: translateX(-30%);
+  filter: brightness(0.6);
+}
+
+/* Splash <-> Quiz: the header (Quiz/Study switch) only exists outside the
+   splash. Entering, it appears above the stage at once, so the departing
+   splash is lifted by the header's height to stay put underneath it.
+   Returning, the header is taken out of the flow, so the departing page is
+   pushed down by the same amount. */
+.splash.push-leave-active {
+  top: calc(-1 * var(--header-h));
+}
+
+.header-leaving > .pop-leave-active {
+  top: var(--header-h);
+}
+
+/* Header sits above the sliding pages. Its background is its own layer
+   (::before) so that, when the header appears or leaves with the splash,
+   the background can slide in/out with the page while only the switch
+   fades. (A background that faded would lag behind the sliding page.) */
+.app-header {
+  position: relative;
+  z-index: 3;
+  /* The sliding background must not stick out past the screen edge (that
+     would add a horizontal scrollbar mid-slide). clip, unlike hidden,
+     doesn't make the header a scroll container. */
+  overflow-x: clip;
+}
+
+.app-header::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg-color);
+}
+
+.header-fade-enter-active::before,
+.header-fade-leave-active::before {
+  transition: transform 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.header-fade-enter-active .app-header-inner,
+.header-fade-leave-active .app-header-inner {
+  transition: opacity 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.header-fade-leave-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.header-fade-enter-from::before,
+.header-fade-leave-to::before {
+  transform: translateX(100%);
+}
+
+.header-fade-enter-from .app-header-inner,
+.header-fade-leave-to .app-header-inner {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .push-enter-active,
+  .push-leave-active,
+  .pop-enter-active,
+  .pop-leave-active,
+  .header-fade-enter-active::before,
+  .header-fade-leave-active::before,
+  .header-fade-enter-active .app-header-inner,
+  .header-fade-leave-active .app-header-inner {
+    transition: none;
+  }
+}
+
+/****************************************************************** BROWSE */
+
+/* Browse typography: set per screen size here; the rules below only read
+   these variables. Same breakpoints as the rest of the app. */
+
+/* Tablet (601–1023px), and the default. */
+.browse {
+  --browse-title-size: 4rem;
+  --browse-title-spacing: 0.1rem;
+  --browse-hint-size: 1.5rem;
+  --browse-hanzi-size: 3rem;
+  --browse-pinyin-size: 1.05rem;
+  --browse-english-size: 0.85rem;
+}
+
+/* Phone (<= 600px). */
+@media (max-width: 680px) {
+  .browse {
+    --browse-title-size: 2rem;
+    --browse-title-spacing: 0.1rem;
+    --browse-hint-size: 0.9rem;
+    --browse-hanzi-size: 3rem;
+    --browse-pinyin-size: 1.05rem;
+    --browse-english-size: 0.85rem;
+  }
+}
+
+/* Desktop (>= 1024px). */
+@media (min-width: 1024px) {
+  .browse {
+    --browse-title-size: 4rem;
+    --browse-title-spacing: 0.1rem;
+    --browse-hint-size: 1.5rem;
+    --browse-hanzi-size: 3rem;
+    --browse-pinyin-size: 1.05rem;
+    --browse-english-size: 0.85rem;
+  }
+}
+
+.browse {
+  width: 85%;
+  margin: 2rem auto 3rem auto;
+  font-family: "Nunito Sans", sans-serif;
+}
+
+.browse-title {
+  font-size: var(--browse-title-size);
+  font-weight: 700;
+  letter-spacing: var(--browse-title-spacing);
+  /* text-transform: uppercase; */
+  margin: 0 0 0.25rem 0;
+}
+
+.browse-hint {
+  margin: 0 0 1rem 0;
+  font-size: var(--browse-hint-size);
+}
+
+.browse-grid {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr));
+  gap: 0.75rem;
+}
+
+.browse-card {
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1rem 0.5rem;
+  border: none;
+  border-radius: 0.75rem;
+  background: var(--bg-interaction);
+  color: #fff;
+  font-family: inherit;
+  text-align: center;
+}
+
+button.browse-card {
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent; /* the flash below replaces it */
+  transition: box-shadow 0.2s ease;
+}
+
+/* Accent border on hover (inset, so the card doesn't change size). Only
+   with a real pointer, so it can't stick after a tap. */
+@media (hover: hover) {
+  button.browse-card:hover {
+    box-shadow: inset 0 0 0 2px var(--active-color);
+  }
+}
+
+/* Keyboard focus gets an outline rather than a fill, so it can't be
+   mistaken for a highlight that's stuck. */
+button.browse-card:focus-visible {
+  outline: 2px solid var(--tab-inactive-hover);
+  outline-offset: 2px;
+}
+
+/* Tap/click feedback: a quick flash that fades back to the normal colour
+   (no lingering hover colour, which sticks on touch screens). */
+.browse-card-flash {
+  animation: browse-card-flash 0.6s ease-out;
+}
+
+@keyframes browse-card-flash {
+  from {
+    background: var(--tab-inactive-hover);
+  }
+  to {
+    background: var(--bg-interaction);
+  }
+}
+
+.browse-hanzi {
+  font-family: "Shippori Mincho", serif;
+  font-size: var(--browse-hanzi-size);
+  line-height: 1.2;
+  color: var(--bg-hanzi);
+}
+
+.browse-pinyin {
+  font-weight: 700;
+  font-size: var(--browse-pinyin-size);
+}
+
+.browse-english {
+  font-size: var(--browse-english-size);
+  opacity: 0.75;
+}
+
+/****************************************************************** MOBILE */
+
+/* Summary stat label: "Best streak", shortened to "Streak" on phones. */
+.stat-label-short {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .stat-label-long {
+    display: none;
+  }
+
+  .stat-label-short {
+    display: inline;
+  }
+
+  /* Big card scaled down so it and the options fit on a phone screen. */
+  .hanzi {
+    font-size: 7rem;
+    line-height: 7rem;
+  }
+
+  .hanzi-meaning {
+    font-size: 1.8rem;
+    line-height: 1.2;
+    height: 7rem;
+    min-width: 7rem;
+  }
+
+  /* ---- Tighter vertical spacing, so after a wrong answer the Next
+     button stays on screen without scrolling. ---- */
+
+  .progress {
+    margin-top: 1rem;
+  }
+
+  /* Bottom margin matches the reveal's margin-top below. */
+  .hanzi-container {
+    margin: 1.25rem 0 0.5rem 0;
+  }
+
+  /* Less padding above and below (more below than above, to centre the
+     glyph). The sides keep the default 2rem, so wide characters (天, 雨, 飞)
+     stay clear of the speaker icon, which sits right in the corner. */
+  .hanzi {
+    padding: 0.75rem 2rem 1.5rem 2rem;
+  }
+
+  .speaker-button {
+    top: 0;
+    right: 0;
+  }
+
+  .hanzi-meaning {
+    padding: 1.125rem 1.5rem;
+  }
+
+  .reveal {
+    margin-top: 0.5rem;
+  }
+
+  .interaction-container {
+    padding-bottom: 1.25rem;
+  }
+
+  .mode-tabs {
+    margin-bottom: 1.25rem;
+  }
+
+  .mode-tab {
+    padding: 1rem 0.5rem;
+  }
+
+  .option {
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+  }
+
+  .option-hanzi {
+    font-size: 2rem;
+  }
+
+  .quiz-options .next-button {
+    margin-top: 0.75rem;
+  }
+
+  .interaction-container,
+  .progress,
+  .browse {
+    width: auto;
+    margin-left: 1rem;
+    margin-right: 1rem;
+  }
+
+  .browse-grid {
+    grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  }
+}
+
+/****************************************************************** SPLASH */
+
+/* Title, text and button stacked at the top on the sky colour; the photo
+   fills the rest of the screen down to the bottom edge, its top fading
+   into the sky. */
+.splash {
+  min-height: calc(100vh - var(--footer-h));
+  min-height: calc(100svh - var(--footer-h));
+  display: flex;
+  flex-direction: column;
+  font-family: "Nunito Sans", sans-serif;
+  /* Matches the photo's own sky, so its faded top edge blends in. */
+  background: #dfe1ee;
+}
+
+/* Shades from a lighter sky at the top to the photo's sky colour. */
+.splash-intro {
+  padding: 3.75rem 8vw 1rem 8vw;
+  background: linear-gradient(to bottom, #eeeef3, #dfe1ee);
+}
+
+/* The logo in the page's dark navy, in place of a text title. */
+.splash-title {
+  margin: 0 0 1.5rem 0;
+  color: var(--text-hanzi);
+}
+
+.splash-logo {
+  width: clamp(14rem, 60vw, 26rem);
+}
+
+/* Decorative 汉字 artwork: desktop only (see the DESKTOP block). Like the
+   logo, the SVG is black artwork used as a mask, filled with the text
+   colour. 992.66 x 548.71 is the SVG's viewBox. */
+.splash-art {
+  display: none;
+  aspect-ratio: 992.66 / 548.71;
+  background: var(--text-hanzi);
+  -webkit-mask: url("./Hanzi_character.svg") center / contain no-repeat;
+  mask: url("./Hanzi_character.svg") center / contain no-repeat;
+}
+
+.splash-text {
+  margin: 0 0 1.75rem 0;
+  max-width: 22em;
+  color: var(--text-hanzi);
+  font-size: clamp(1.2rem, 5vw, 1.6rem);
+  line-height: 1.5;
+}
+
+/* Styled by .button.next-button (same look as the quiz's Next button), but
+   sized to its text with the original padding instead of full width. */
+.splash-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: auto;
+  min-height: 44px;
+  margin-top: 0;
+  padding: 0.8rem 2rem;
+  text-decoration: none;
+}
+
+/* Grows to fill the space under the text. On wide screens the photo is
+   cropped; it's anchored to the bottom so the terraces stay in view. */
+.splash-image {
+  flex: 1 1 auto;
+  min-height: 14rem;
+  background: url("./bg_v2.jpg") center bottom / cover no-repeat;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 25%);
+  mask-image: linear-gradient(to bottom, transparent, #000 25%);
+}
+
+/****************************************************************** DESKTOP (>= 1024px) */
+
+/* Below 1024px the layout above applies unchanged (with the extra phone
+   tweaks under 600px). From 1024px: a slim one-row header, a centred
+   1100px container and a two-column quiz. */
+@media (min-width: 1024px) {
+  :root {
+    /* 1.5rem of space above a 64px bar. */
+    --header-h: calc(1.5rem + 64px);
+  }
+
+  /* ---- Header: title left, Quiz/Study right ---- */
+
+  .app-header {
+    height: var(--header-h);
+    padding: 1.5rem 2rem 0 2rem;
+    box-sizing: border-box;
+  }
+
+  .app-header-inner {
+    width: auto;
+    max-width: 1100px;
+    height: 100%;
+    gap: 1.5rem;
+  }
+
+  .app-logo-mark {
+    height: 40px;
+  }
+
+  /* ---- Container ---- */
+
+  /* 1100px of content plus 2rem padding each side (matches the header). */
+  .quiz-layout {
+    max-width: calc(1100px + 4rem);
+    margin: 0 auto;
+    padding: 2.25rem 2rem 2rem 2rem;
+    box-sizing: border-box;
+  }
+
+  /* Two columns: progress + card (+ answer reveal) left; mode tabs and
+     answers right, starting level with the top of the card and spanning
+     the card and reveal rows. The card component's wrapper is dissolved
+     (display: contents) so the card and reveal are grid items themselves. */
+  .quiz-layout:not(.is-finished) {
+    display: grid;
+    grid-template-columns: 440px minmax(0, 1fr);
+    grid-template-areas:
+      "progress ."
+      "card answers"
+      "reveal answers";
+    column-gap: 4.5rem;
+    row-gap: 1rem;
+  }
+
+  /* ---- Left column ---- */
+
+  .progress {
+    grid-area: progress;
+    width: auto;
+    margin: 0;
+  }
+
+  .progress-label {
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    opacity: 0.9;
+  }
+
+  .progress-text-long {
+    display: none;
+  }
+
+  .progress-text-short {
+    display: inline;
+  }
+
+  .progress-track {
+    height: 0.5rem;
+    border-radius: 0.25rem;
+  }
+
+  .hanzi-container {
+    display: contents;
+  }
+
+  .hanzi-stage {
+    grid-area: card;
+  }
+
+  /* Larger answer reveal under the big card (height still reserved, so
+     nothing jumps when it appears). */
+  .reveal {
+    grid-area: reveal;
+    margin-top: 0;
+    min-height: 6rem;
+    gap: 0.4rem;
+  }
+
+  .reveal-main {
+    font-size: 2.5rem;
+    line-height: 1.1;
+  }
+
+  .reveal-hanzi {
+    font-size: 3.25rem;
+  }
+
+  .reveal-sub {
+    font-size: 1.3rem;
+  }
+
+  .hanzi {
+    width: 440px;
+    height: 440px;
+    box-sizing: border-box;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 260px;
+    line-height: 1;
+    border-radius: 1.5rem;
+  }
+
+  .hanzi-meaning {
+    width: 440px;
+    height: 440px;
+    min-width: 0;
+    max-width: none;
+    box-sizing: border-box;
+    padding: 2.5rem;
+    font-size: 4.75rem;
+    line-height: 1.15;
+    text-align: center;
+  }
+
+  .speaker-button {
+    top: 0.75rem;
+    right: 0.75rem;
+  }
+
+  /* ---- Right column: answers ---- */
+
+  /* The answer panel: same panel and tabs as on mobile, with its top
+     level with the top of the card. */
+  .quiz-layout:not(.is-finished) .interaction-container {
+    grid-area: answers;
+    align-self: start;
+    justify-self: end;
+    width: 100%;
+    max-width: 500px;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 1.5rem;
+  }
+
+  .quiz-layout:not(.is-finished) .mode-tabs {
+    margin: -1.5rem -1.5rem 1.5rem -1.5rem;
+  }
+
+  .quiz-layout:not(.is-finished) .mode-tab {
+    padding: 1.1rem 0.5rem;
+  }
+
+  .button-container {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* Resting: dark with a subtle border. Hover/focus: accent border and a
+     slight lift. Correct/wrong colours (below in the cascade via
+     !important) still win. */
+  .option {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    min-height: 4.5rem;
+    padding: 0.9rem 1.25rem 0.9rem 2rem;
+    box-sizing: border-box;
+    text-align: left;
+    font-size: 1.75rem;
+    line-height: 1.2;
+    border-radius: 0.75rem;
+    background: var(--bg-interaction);
+    /* At least 3:1 against the panel, so the button edge is visible. */
+    outline: 1px solid rgba(216, 219, 230, 0.42);
+    transition: background 0.2s, outline-color 0.2s, transform 0.2s,
+      box-shadow 0.2s;
+  }
+
+  .option-hanzi {
+    font-size: 2.75rem;
+    line-height: 1;
+  }
+
+  @media (hover: hover) {
+    .option:not(:disabled):hover {
+      outline-color: var(--active-color);
+      background: #0e1b29;
+      transform: translateY(-1px);
+    }
+  }
+
+  .option:focus-visible {
+    outline: 2px solid var(--active-color);
+    background: #0e1b29;
+    box-shadow: 0 0 0 5px rgba(224, 70, 9, 0.25);
+  }
+
+  /* Answered options keep their green/red edge. */
+  .option.button-correct {
+    outline-color: var(--correct-color);
+  }
+
+  .option.button-wrong {
+    outline-color: var(--wrong-color);
+  }
+
+  /* ✓ / ✗ at the right end of the answer row. */
+  .option-mark {
+    position: static;
+    margin-left: auto;
+  }
+
+  .option-mark svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  /* Number as a small corner label, like on mobile, just a bit larger. */
+  .option-key {
+    left: 0.75rem;
+    top: 0.55rem;
+    font-size: 0.75rem;
+  }
+
+  .next-button {
+    min-height: 3.5rem;
+  }
+
+
+  /* ---- Session summary: two columns ---- */
+
+  .quiz-layout.is-finished .interaction-container {
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    background: none;
+    border-radius: 0;
+  }
+
+  .summary {
+    grid-template-columns: 380px minmax(0, 600px);
+    grid-template-rows: auto 1fr;
+    grid-template-areas:
+      "head review"
+      "actions review";
+    justify-content: space-between;
+    align-items: start;
+    column-gap: 4rem;
+    row-gap: 1.75rem;
+    text-align: left;
+  }
+
+  .summary-score-number {
+    font-size: 5rem;
+  }
+
+  .result-strip {
+    justify-content: flex-start;
+  }
+
+  .review-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* ---- Splash: same 1100px column as the other pages ---- */
+
+  /* Top: 7.5rem on tall screens, shrinking to the default 3.75rem on short
+     ones (720px), so the splash still fits without scrolling. Sides: 2rem,
+     growing to centre an 1100px column on wide screens (like the header). */
+  .splash-intro {
+    padding-top: clamp(3.75rem, 33.3vh - 180px, 7.5rem);
+    padding-left: max(2rem, (100% - 1100px) / 2);
+    padding-right: max(2rem, (100% - 1100px) / 2);
+    /* Text left, 汉字 artwork right as the main visual. */
+    display: grid;
+    grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr);
+    align-items: center;
+    column-gap: 3rem;
+  }
+
+  /* Logo at title size; the artwork takes the main stage. */
+  .splash-logo {
+    width: 13rem;
+  }
+
+  .splash-art {
+    display: block;
+    width: 100%;
+    max-width: 700px;
+    justify-self: end;
+  }
+
+  /* The photo strip is short and wide here, so the photo is scaled to the
+     full width (2000 x 1333, i.e. 66.65vw tall). Instead of showing only its
+     bottom, it's moved down so the top of the terraces (about 61% down the
+     photo, 40.7vw) sits 3rem into the strip and rises out of the haze. max()
+     with 100% (bottom-aligned) keeps the photo reaching the bottom edge on
+     tall screens. */
+  .splash-image {
+    background-position: center max(calc(3rem - 40.7vw), 100%);
+  }
+
+  /* ---- Study page uses the same container ---- */
+
+  .browse {
+    width: auto;
+    max-width: calc(1100px + 4rem);
+    margin: 2rem auto 3rem auto;
+    padding: 0 2rem;
+    box-sizing: border-box;
+  }
+}
+
+/* Short desktop screens (e.g. 1280x720): a smaller card, so the quiz still
+   fits without scrolling. */
+@media (min-width: 1024px) and (max-height: 760px) {
+  .quiz-layout:not(.is-finished) {
+    grid-template-columns: 360px minmax(0, 1fr);
+  }
+
+  .hanzi,
+  .hanzi-meaning {
+    width: 360px;
+    height: 360px;
+  }
+
+  .hanzi:not(.hanzi-meaning) {
+    font-size: 210px;
+  }
+
+  .hanzi-meaning {
+    font-size: 3.6rem;
+  }
+
+  /* Slightly shorter answers so tabs, answers and Next fit beside it. */
+  .option {
+    min-height: 3.75rem;
+  }
+}
+
+/****************************************************************** SPLASH (TEACH) */
+
+/* SplashTeach.vue: the landing page that reads 汉字 with the user, then
+   starts the quiz. The terraces photo reuses the classic .splash-image. Uses the splash's light sky colours, the
+   existing text colour, fonts and CTA orange. No all-caps anywhere.
+   Placed last so it overrides the shared .splash-art / .next-button rules. */
+
+.tone-1 { color: var(--tone-1); }
+.tone-2 { color: var(--tone-2); }
+.tone-3 { color: var(--tone-3); }
+.tone-4 { color: var(--tone-4); }
+.tone-5 { color: var(--tone-5); }
+
+.splash.splash-teach {
+  color: var(--text-hanzi);
+  background: linear-gradient(to bottom, #eeeef3, #dfe1ee);
+}
+
+.teach-column {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  box-sizing: border-box;
+}
+
+/* ---- Header: the wordmark, placed exactly like the app header's ----
+   Uses the app header's .app-header-inner / .app-logo / .app-logo-mark
+   (size and position); this only copies .app-header's padding and the
+   height of its row (the Quiz/Study switch, 52px), and colours the
+   wordmark navy instead of white. */
+
+.teach-header {
+  padding: 1rem 0 0 0;
+}
+
+.teach-header .app-header-inner {
+  min-height: 52px;
+}
+
+.teach-header .app-logo-mark {
+  color: var(--text-hanzi);
+}
+
+@media (max-width: 600px) {
+  .teach-header {
+    padding: 1rem 1rem 0 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .teach-header {
+    height: var(--header-h);
+    padding: 1.5rem 2rem 0 2rem;
+    box-sizing: border-box;
+  }
+}
+
+/* ---- Hero: 汉字 with a two-column caption under it ---- */
+
+.teach-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.5rem 0 3.5rem 0;
+}
+
+.teach-figure {
+  width: 100%;
+  max-width: 620px;
+  margin: 0;
+}
+
+/* The shared brush artwork (.splash-art, a mask filled with the text
+   colour), shown at every size here. */
+.splash-teach .teach-art {
+  display: block;
+  width: 100%;
+  max-width: none;
+}
+
+/* Two equal columns, one under each character. */
+.teach-caption {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 1rem;
+}
+
+.teach-syllable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.teach-pinyin {
+  font-size: 1.625rem; /* 26px */
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.teach-gloss {
+  font-size: 1rem;
+}
+
+/* Title, copy and button: centred under the characters (one column). */
+.teach-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.teach-title {
+  max-width: 18em;
+  margin: 2.5rem 0 0 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.teach-text {
+  max-width: 30em;
+  margin: 0 0 2rem 0;
+  font-size: 1.25rem;
+  line-height: 1.5;
+}
+
+/* The quiz's orange button (.next-button), in sentence case with an arrow. */
+.button.next-button.teach-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  width: auto;
+  min-height: 44px;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0.9rem 1.75rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  text-decoration: none;
+}
+
+.teach-cta-arrow {
+  transition: transform 0.2s ease;
+}
+
+@media (hover: hover) {
+  .teach-cta:hover .teach-cta-arrow {
+    transform: translateX(3px);
+  }
+}
+
+.teach-cta:focus-visible {
+  outline: 2px solid var(--text-hanzi);
+  outline-offset: 3px;
+}
+
+/* ---- Desktop: characters left, title/copy/button right ---- */
+
+@media (min-width: 1024px) {
+  .teach-hero {
+    display: grid;
+    /* Left column follows the characters' width (see .teach-figure). */
+    grid-template-columns:
+      minmax(0, min(460px, (100vh - 470px) * 1.809))
+      minmax(0, 1fr);
+    align-items: center;
+    column-gap: 5.5rem;
+    padding: 2rem 0 1.75rem 0;
+    text-align: left;
+  }
+
+  /* Fits the window without scrolling down to ~720px tall: the characters
+     shrink with the window height (1.809 is the artwork's width/height), up
+     to 460px wide, and the photo strip may get shorter than on the classic
+     splash. 470px is roughly header + caption + padding + footer + the
+     photo's minimum. */
+  .teach-figure {
+    max-width: min(460px, (100vh - 470px) * 1.809);
+  }
+
+  .splash-teach .splash-image {
+    min-height: 7rem;
+  }
+
+  /* Where the top of the terraces sits in the photo strip: 4.5rem down,
+     leaving open sky under the hero (see .splash-image in the DESKTOP
+     block for how this works). */
+  .splash-teach .splash-image {
+    background-position: center max(calc(4.5rem - 40.7vw), 100%);
+  }
+
+  .teach-intro {
+    align-items: flex-start;
+  }
+
+  .teach-title {
+    margin-top: 0;
+    font-size: clamp(2.25rem, 3.4vw, 3rem);
+  }
+}
+
+/* ---- Phones ---- */
+
+@media (max-width: 600px) {
+  .teach-column {
+    padding: 0 1rem;
+  }
+
+  .teach-hero {
+    padding: 1.5rem 0 1.5rem 0;
+  }
+
+  /* Smaller than full width, with room around it. */
+  .teach-figure {
+    max-width: 78%;
+  }
+
+  /* At phone width the photo is scaled so small that only its bottom fits
+     and the terraces start low in the strip. Scaled up (2.5x the strip's
+     height) the terraces, the lower ~39% of the photo, fill the strip from
+     its top; centred slightly right on the highest terraces. */
+  .splash-teach .splash-image {
+    background-size: auto 250%;
+    background-position: 60% bottom;
+  }
+
+  .teach-pinyin {
+    font-size: 1.4rem;
+  }
+
+  .teach-gloss {
+    font-size: 0.9rem;
+  }
+
+  .teach-title {
+    margin-top: 2rem;
+    font-size: 2rem; /* 32px */
+  }
+
+  .teach-text {
+    font-size: 1.05rem;
+  }
+
+  .button.next-button.teach-cta {
+    width: 100%;
+  }
+}
+
+/****************************************************************** SPLASH (SPLIT) */
+
+/* SplashSplit.vue: the 汉字 artwork on a light column (left) and the
+   headline on a navy column (right), filling the window. No footer bar:
+   the credit sits at the bottom of the right column. Below 900px the
+   columns stack (art on top); above it they stay side by side, shrinking
+   in proportion (their 640/520px bases add up to more than e.g. 1024px,
+   which would otherwise already stack them there). */
+
+.splash.splash-split {
+  flex-direction: row;
+  flex-wrap: wrap;
+  min-height: 100vh;
+  min-height: 100svh;
+  background: var(--text-hanzi);
+}
+
+/* ---- Left: art ---- */
+
+.split-art {
+  flex: 1 1 640px;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 44px clamp(24px, 5vw, 80px);
+  color: var(--text-hanzi);
+}
+
+.split-logo {
+  position: relative; /* above the photo and wash */
+  z-index: 1;
+  align-self: flex-start;
+  /* At least this much room above the 汉字 when space is tight (phones). */
+  margin-bottom: 24px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: #fff;
+}
+
+.split-logo-mark {
+  height: 30px;
+}
+
+/* Same soft shadow as the caption. (The wordmark is a CSS mask, which would
+   cut off its own shadow, so it's put on the link around it.) */
+.split-art .split-logo {
+  filter: drop-shadow(0 1px 12px rgba(12, 30, 46, 0.6));
+}
+
+.split-logo:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 4px;
+  border-radius: 0.25rem;
+}
+
+/* Centred both ways in the space left under the wordmark. */
+.split-figure {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 540px;
+  margin: auto;
+}
+
+/* The shared brush artwork (.splash-art: a mask), in white here. */
+.splash-split .split-hanzi {
+  display: block;
+  width: 100%;
+  max-width: none;
+  background: #fff;
+}
+
+.split-caption {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 36px;
+}
+
+.split-syllable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.split-pinyin {
+  font-size: 1.625rem; /* 26px */
+  font-weight: 800;
+  line-height: 1.2;
+  color: #fff;
+  text-shadow: 0 1px 12px rgba(12, 30, 46, 0.6);
+}
+
+.split-gloss {
+  font-size: 1.0625rem; /* 17px */
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 12px rgba(12, 30, 46, 0.6);
+}
+
+/* The terraces photo fills the whole column, behind the wordmark and 汉字,
+   under a navy gradient (::after): darker at the top, fading toward the
+   bottom. The column is narrower than the 3:2 photo, so "cover" would show
+   the photo's full height and the vertical object-position would do
+   nothing; the photo is instead made taller than the column
+   (--split-photo-h) and moved up (--split-photo-shift), so the mist sits
+   behind the 汉字 and the dark mountain band behind the caption. */
+.split-art {
+  --split-photo-h: 125%;
+  --split-photo-shift: 0%;
+  --split-photo-x: 30%;
+}
+
+.split-photo {
+  position: absolute;
+  left: 0;
+  top: calc(-1 * var(--split-photo-shift));
+  width: 100%;
+  height: var(--split-photo-h);
+  object-fit: cover;
+  object-position: var(--split-photo-x) center;
+  /* Keeps the greens and water from looking washed out under the tint. */
+  filter: saturate(1.1);
+}
+
+.split-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--text-hanzi) 55%, transparent) 0%,
+    color-mix(in srgb, var(--text-hanzi) 35%, transparent) 55%,
+    color-mix(in srgb, var(--text-hanzi) 10%, transparent) 100%
+  );
+  pointer-events: none;
+}
+
+/* ---- Right: text ---- */
+
+.split-text {
+  flex: 1 1 520px;
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 44px clamp(24px, 5vw, 80px);
+  background: var(--text-hanzi);
+  color: #fff;
+}
+
+/* Centred vertically; the credit stays at the bottom. */
+.split-intro {
+  margin: auto 0;
+}
+
+.split-title {
+  max-width: 11ch;
+  margin: 0;
+  font-size: 3.75rem; /* 60px */
+  font-weight: 800;
+  line-height: 1.03;
+  letter-spacing: -0.03em;
+}
+
+.split-lead {
+  max-width: 30ch;
+  margin: 24px 0 0 0;
+  font-size: 1.25rem;
+  line-height: 1.5;
+}
+
+.split-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  box-sizing: border-box;
+  margin-top: 40px;
+  padding: 18px 32px;
+  border-radius: 12px;
+  background: var(--cta-color);
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: filter 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Darkens rather than lightens, so the white text keeps its contrast. */
+@media (hover: hover) {
+  .split-cta:hover {
+    filter: brightness(0.92);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  }
+}
+
+.split-cta:active {
+  filter: brightness(0.85);
+  transform: none;
+  box-shadow: none;
+}
+
+.split-cta:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.split-credit {
+  margin: 40px 0 0 0;
+  font-size: 0.875rem;
+  color: var(--bg-hanzi);
+}
+
+/* Underlined: same colour as the text around it. */
+/* Like the footer link: a half-strength underline that turns solid on
+   hover/focus. */
+.split-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
+  /* 44px-tall tap area without changing the line's layout. */
+  display: inline-block;
+  padding: 13px 0;
+  margin: -13px 0;
+}
+
+.split-credit a:hover,
+.split-credit a:focus-visible {
+  text-decoration-color: currentColor;
+}
+
+.split-credit a:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+  border-radius: 0.15rem;
+}
+
+/* ---- Phones and narrow windows ---- */
+
+@media (min-width: 901px) {
+  .splash.splash-split {
+    flex-wrap: nowrap;
+  }
+}
+
+@media (max-width: 900px) {
+  .split-art {
+    min-height: 560px;
+  }
+
+  .split-title {
+    font-size: 2.5rem; /* 40px */
+  }
+
+  .split-cta {
+    display: flex;
+    width: 100%;
+  }
+}
+
+/****************************************************************** SPLASH (INKWASH) */
+
+/* SplashInkwash.vue: SplashSplit's layout and right column (its root also
+   has .splash-split), with a paper left column: the navy 汉字 and an
+   ink-wash print of the terraces (scripts/make-inkwash.mjs) along the
+   bottom. No overlay or tint; the ink wash is the only image effect. */
+
+.ink-art {
+  flex: 1 1 640px;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  /* Height of the ink wash: 280px, growing with the column on wide
+     screens (the column is half the window, 50vw) so the terraces' own top
+     edge always shows instead of being cut off by the fade. */
+  --ink-wash-h: max(280px, 18vw);
+  /* Bottom padding keeps the 汉字 and caption clear of the ink wash. */
+  padding: 44px clamp(24px, 5vw, 80px) calc(var(--ink-wash-h) - 50px);
+  background: #f2eee4 url("./paper.jpg") center / cover; /* colour while it loads */
+  color: var(--text-hanzi);
+}
+
+/* Wordmark and figure sit above the ink wash. */
+.ink-logo,
+.ink-figure {
+  position: relative;
+  z-index: 1;
+}
+
+.ink-logo {
+  align-self: flex-start;
+  /* At least this much room above the 汉字 when space is tight (phones). */
+  margin-bottom: 24px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--text-hanzi);
+}
+
+.ink-logo-mark {
+  height: 30px;
+}
+
+.ink-logo:focus-visible {
+  outline: 2px solid var(--active-color);
+  outline-offset: 4px;
+  border-radius: 0.25rem;
+}
+
+/* Centred both ways in the space left under the wordmark. */
+.ink-figure {
+  width: 100%;
+  max-width: 520px;
+  margin: auto;
+}
+
+/* The shared brush artwork (.splash-art: a mask), in navy. */
+.splash-inkwash .ink-hanzi {
+  display: block;
+  width: 100%;
+  max-width: none;
+  background: var(--text-hanzi);
+}
+
+.ink-caption {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 36px;
+}
+
+.ink-syllable {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+}
+
+.ink-pinyin {
+  font-size: 1.625rem; /* 26px */
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-hanzi);
+}
+
+.ink-gloss {
+  font-size: 1rem;
+  color: #4f5864;
+}
+
+.ink-wash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--ink-wash-h);
+  display: block;
+  opacity: 0.85;
+  /* Only the top edge fades into the paper: a fixed 84px (30% of the
+     280px strip), which stays above the terraces as the strip grows. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 84px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 84px);
+}
+
+.ink-wash img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 35% bottom;
+}
+
+/* Button closer to the paragraph than on SplashSplit (24px instead of
+   40px, the same as the headline–paragraph gap). */
+.splash-inkwash .split-cta {
+  margin-top: 24px;
+}
+
+/* Side by side: exactly half each (equal bases, equal growth). The 汉字
+   block and the headline block are both centred on the window's vertical
+   middle, so they line up: the wordmark and the credit are taken out of
+   the flow (pinned top and bottom), and each column's padding is equal at
+   top and bottom. */
+@media (min-width: 901px) {
+  .splash-inkwash .ink-art,
+  .splash-inkwash .split-text {
+    flex: 1 1 0;
+  }
+
+  .splash-inkwash .ink-art {
+    padding-top: 44px;
+    padding-bottom: 44px;
+  }
+
+  .splash-inkwash .ink-logo {
+    position: absolute;
+    top: 44px;
+    left: clamp(24px, 5vw, 80px);
+    margin: 0;
+  }
+
+  /* Centred, the caption would run into the ink wash on short windows, so
+     the 汉字 shrinks there: the block may be at most the window height
+     minus twice (wash height − 60px), so the caption ends 24px above where
+     the wash turns solid (84px down). 94px is the gap + caption under the
+     artwork; 1.809 the artwork's width/height. */
+  .splash-inkwash .ink-figure {
+    max-width: min(
+      520px,
+      (100vh - 2 * (var(--ink-wash-h) - 60px) - 94px) * 1.809
+    );
+  }
+
+  .splash-inkwash .split-text {
+    position: relative;
+  }
+
+  .splash-inkwash .split-credit {
+    position: absolute;
+    left: clamp(24px, 5vw, 80px);
+    right: clamp(24px, 5vw, 80px);
+    bottom: 44px;
+    margin: 0;
+  }
+}
+
+/* ---- Phones and narrow windows (stacked, like SplashSplit) ---- */
+
+/* Compact so the headline and button come up sooner: smaller 汉字, a
+   shorter art column and ink wash, and tighter spacing. */
+@media (max-width: 900px) {
+  .ink-art {
+    --ink-wash-h: 150px;
+    min-height: 0;
+    padding: 24px clamp(24px, 5vw, 80px) 120px;
+  }
+
+  .ink-logo {
+    margin-bottom: 16px;
+  }
+
+  .ink-figure {
+    max-width: 260px;
+  }
+
+  .ink-caption {
+    margin-top: 20px;
+  }
+
+  .ink-pinyin {
+    font-size: 1.375rem; /* 22px */
+  }
+
+  .ink-gloss {
+    font-size: 0.9375rem; /* 15px */
+  }
+
+  /* 30% of the 150px strip. */
+  .ink-wash {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 45px);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 45px);
+  }
+
+  /* Right column: less padding above the headline (the 24px gaps
+     between headline, text and button stay). */
+  .splash-inkwash .split-text {
+    padding-top: 32px;
+    padding-bottom: 32px;
+  }
+}

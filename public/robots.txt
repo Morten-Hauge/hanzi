@@ -1,0 +1,5 @@
+# All pages may be indexed.
+User-agent: *
+Allow: /
+
+Sitemap: https://www.morten-hauge.com/hanzi/sitemap.xml
