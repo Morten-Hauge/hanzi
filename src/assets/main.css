@@ -1065,6 +1065,11 @@ html.splash-scrollbar {
 
 .header-leaving > .pop-leave-active {
   top: var(--header-h);
+  /* Down to the bottom of the window: the footer bar disappears at once
+     (the splash has none), and the leaving page would otherwise be too
+     short to cover the splash sliding in underneath it. */
+  min-height: calc(100vh - var(--header-h));
+  min-height: calc(100svh - var(--header-h));
 }
 
 /* Header sits above the sliding pages. Its background is its own layer
@@ -2523,5 +2528,476 @@ button.browse-card:focus-visible {
   .splash-inkwash .split-text {
     padding-top: 32px;
     padding-bottom: 32px;
+  }
+}
+
+/****************************************************************** SPLASH (PAPER) */
+
+/* Instrument Serif (headline and pinyin), self-hosted from public/fonts
+   (scripts/fetch-instrument-serif.mjs; licence: OFL.txt next to them).
+   The regular weight is preloaded in index.html. */
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/instrument-serif/InstrumentSerif-Regular.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Instrument Serif";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/instrument-serif/InstrumentSerif-Italic.woff2")
+    format("woff2");
+}
+
+/* SplashPaper.vue: the ink-wash splash without the navy column. The paper
+   and the ink-wash terraces run the full width; the 汉字 (left) and the
+   headline (right) are both navy on the paper. The credit sits top right,
+   opposite the wordmark, so it never lands on the dark terraces. */
+
+/* The page: a frame in the darkest navy (the app background) around the
+   paper box.
+   The root itself has no position, so the page slide's "position:
+   absolute" on the leaving page applies. */
+.splash.splash-paper {
+  /* Width of the navy frame around the box. */
+  --paper-frame: clamp(8px, 1vw, 16px);
+  /* Height of the ink wash (full width, so taller than on inkwash, where
+     it only spans half), and shorter on short windows. Also sets the
+     bottom padding below. */
+  --paper-wash-h: clamp(180px, 22vw, 38vh);
+  --paper-side: clamp(24px, 5vw, 80px);
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100svh;
+  padding: var(--paper-frame);
+  background: var(--bg-color);
+  color: var(--text-hanzi);
+}
+
+/* The rounded paper box: holds everything, clips the ink wash to its
+   corners, and is the ink wash's containing block. */
+.paper-frame {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 44px var(--paper-side) calc(var(--paper-wash-h) - 40px);
+  border-radius: 24px;
+  background: #f2eee4 url("./paper.jpg") center / cover; /* colour while it loads */
+}
+
+/* ---- Wrapper: top row and content at most 1600px wide, centred, so the
+   two blocks don't drift apart on large screens (the paper and the ink
+   wash still run the full width) ---- */
+
+.paper-top,
+.paper-content {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ---- Top: wordmark left, credit right ---- */
+
+.paper-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.paper-logo {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--text-hanzi);
+}
+
+.paper-logo-mark {
+  height: 30px;
+}
+
+.paper-credit {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--text-hanzi);
+  text-align: right;
+}
+
+/* Same as the footer link: half-strength underline, solid on hover. */
+.paper-credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
+  /* 44px-tall tap area without changing the line's layout. */
+  display: inline-block;
+  padding: 13px 0;
+  margin: -13px 0;
+}
+
+.paper-credit a:hover,
+.paper-credit a:focus-visible {
+  text-decoration-color: currentColor;
+}
+
+.paper-logo:focus-visible,
+.paper-credit a:focus-visible {
+  outline: 2px solid var(--text-hanzi);
+  outline-offset: 4px;
+  border-radius: 0.25rem;
+}
+
+/* Keyboard focus: a ring outside the button's own border. */
+.splash-paper .paper-cta:focus-visible {
+  outline: 2px solid var(--text-hanzi);
+  outline-offset: 4px;
+}
+
+/* ---- Content: the practice cells left, the headline stack right, top
+   aligned, with a 96px gap; the pair centred in the wrapper ---- */
+
+.paper-content {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 500px);
+  justify-content: center;
+  /* The pair as a whole is centred vertically; inside it, the headline
+     stack starts level with the top of the cells (the pinyin). */
+  align-content: center;
+  align-items: start;
+  column-gap: 96px;
+  /* Size of one practice cell: 300px, smaller on narrow windows (21vw) and
+     on short ones (the window height minus frame, top row, ink wash and
+     the pinyin and meaning above and below the cell). */
+  --cell: clamp(
+    150px,
+    min(
+      21vw,
+      100vh - 2 * var(--paper-frame) - var(--paper-wash-h) - 138px
+    ),
+    300px
+  );
+}
+
+/* ---- Practice grid (田字格) ---- */
+
+/* The two cells side by side, sharing their middle border: the second
+   cell has no left border (overlapping two half-transparent borders would
+   stack them into a darker line). */
+.tz-pair {
+  display: flex;
+}
+
+.tz-char {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.tz-char + .tz-char .tz-cell {
+  border-left: 0;
+}
+
+.tz-pinyin {
+  font-family: "Instrument Serif", serif;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 38px;
+  line-height: 1;
+}
+
+.tz-gloss {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text-hanzi);
+}
+
+.tz-cell {
+  position: relative;
+  box-sizing: border-box;
+  width: var(--cell);
+  height: var(--cell);
+  border: 1.5px solid #c2412680;
+}
+
+/* The dashed cross through the centre: 1px, 6px on / 6px off. */
+.tz-cell::before,
+.tz-cell::after {
+  content: "";
+  position: absolute;
+}
+
+.tz-cell::before {
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 0.5px);
+  width: 1px;
+  background: repeating-linear-gradient(
+    to bottom,
+    #c2412659 0 6px,
+    transparent 6px 12px
+  );
+}
+
+.tz-cell::after {
+  left: 0;
+  right: 0;
+  top: calc(50% - 0.5px);
+  height: 1px;
+  background: repeating-linear-gradient(
+    to right,
+    #c2412659 0 6px,
+    transparent 6px 12px
+  );
+}
+
+/* One character from the brush artwork (Hanzi_character.svg, viewBox
+   992.66 x 548.71; 汉 spans x 0–465, y 33.5–508; 字 x 507.5–992.5,
+   y 0–548.5). The element is the size of that character's box and shows
+   the matching part of the artwork as a mask, in navy. Both characters
+   use the same scale: the taller one (字) is 86% of the cell. */
+.tz-glyph {
+  --k: calc(var(--cell) * 0.86 / 548.5);
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  background: var(--text-hanzi);
+  -webkit-mask: url("./Hanzi_character.svg") no-repeat;
+  mask: url("./Hanzi_character.svg") no-repeat;
+  -webkit-mask-size: calc(var(--k) * 992.66) auto;
+  mask-size: calc(var(--k) * 992.66) auto;
+}
+
+/* Optical nudges: 汉 a touch right (its strokes lean left), 字 a touch
+   down (its top dot makes it look high). */
+.tz-han {
+  width: calc(var(--k) * 465);
+  height: calc(var(--k) * 474.5);
+  transform: translate(-48%, -50%);
+  -webkit-mask-position: 0 calc(var(--k) * -33.5);
+  mask-position: 0 calc(var(--k) * -33.5);
+}
+
+.tz-zi {
+  width: calc(var(--k) * 485);
+  height: calc(var(--k) * 548.5);
+  transform: translate(-50%, -48%);
+  -webkit-mask-position: calc(var(--k) * -507.5) 0;
+  mask-position: calc(var(--k) * -507.5) 0;
+}
+
+/* ---- Headline stack ---- */
+
+.paper-title {
+  max-width: 500px;
+  margin: 0;
+  font-family: "Instrument Serif", serif;
+  font-weight: 400;
+  /* 88px on desktop, ~48px on a 375px phone. */
+  font-size: clamp(48px, 31.4px + 4.42vw, 88px);
+  line-height: 0.94;
+  letter-spacing: -0.015em;
+}
+
+.paper-title em {
+  font-style: italic;
+}
+
+.paper-lead {
+  max-width: 30ch;
+  margin: 24px 0 0 0;
+  font-size: 1.5rem;
+  line-height: 1.25;
+  font-weight: 500;
+  color: var(--text-lead);
+}
+
+@media (max-width: 861px) {
+  .paper-lead {
+    font-size: 1.25rem;
+  }
+}
+
+/* The button: solid navy; on hover an orange layer sweeps in from the
+   left to fill it (and slides back out on leave), with a soft shadow. Navy and
+   orange are never mixed: a colour fade between them passes through a
+   muddy brown, which flashed as a glitch. The orange is --cta-color, the
+   accessible shade of --active-color (white text: 4.9:1; on
+   --active-color itself only 4.2:1). Built on .split-cta for size and
+   shape. Its own width here: the split splash makes it full width below
+   900px, but this page keeps two columns down to 861px. */
+.splash-paper .paper-cta {
+  position: relative;
+  isolation: isolate; /* keeps the fill layer behind the text */
+  overflow: hidden; /* clips the fill to the rounded corners */
+  display: inline-flex;
+  width: auto;
+  margin-top: 32px;
+  border: 0;
+  background-color: var(--tab-inactive-hover);
+  color: #fff;
+  box-shadow: none;
+  transition: box-shadow 0.45s ease-out;
+}
+
+/* The orange fill. */
+.splash-paper .paper-cta::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--cta-color);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.8s cubic-bezier(0.32, 0.72, 0, 1),
+    background-color 0.15s ease-out;
+}
+
+@media (hover: hover) {
+  /* filter/transform reset the shared .split-cta hover. */
+  .splash-paper .paper-cta:hover {
+    filter: none;
+    transform: none;
+    box-shadow: 0 6px 18px rgba(12, 30, 48, 0.32);
+  }
+
+  .splash-paper .paper-cta:hover::before {
+    transform: scaleX(1);
+  }
+}
+
+/* Pressed: full orange, a shade deeper, no shadow. */
+.splash-paper .paper-cta:active {
+  filter: none;
+  transform: none;
+  box-shadow: none;
+}
+
+.splash-paper .paper-cta:active::before {
+  transform: scaleX(1);
+  background-color: #b33806;
+}
+
+/* Reduced motion: the colours swap without the sweep. */
+@media (prefers-reduced-motion: reduce) {
+  .splash-paper .paper-cta::before {
+    transition: none;
+  }
+}
+
+/* ---- Ink wash: full width along the bottom ---- */
+
+.paper-wash {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--paper-wash-h);
+  display: block;
+  opacity: 0.85;
+  /* Only the top edge fades into the paper. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 84px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 84px);
+}
+
+.paper-wash img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 35% bottom;
+}
+
+/* Side by side, the image spans the full window width, so "cover" would
+   show only the bottom of the terraces and the fade would cut across them.
+   Instead the image is placed so the terraces' own top outline (62% down
+   the 2000x1333 image, i.e. 41.3vw at full width) sits 90px into the
+   strip, just below the fade; the bottom of the image is cropped. The
+   image is as wide as the paper box (the window minus the frame). */
+@media (min-width: 861px) {
+  .paper-wash {
+    overflow: hidden;
+  }
+
+  .paper-wash img {
+    position: absolute;
+    left: 0;
+    top: calc(90px - (100vw - 2 * var(--paper-frame)) * 0.413);
+    height: auto;
+  }
+}
+
+/* ---- Phones and narrow windows: one column, terraces at the end ---- */
+
+@media (max-width: 860px) {
+  .splash.splash-paper {
+    --paper-wash-h: 170px;
+  }
+
+  .paper-frame {
+    padding: 24px var(--paper-side) 0;
+    border-radius: 16px;
+  }
+
+  .paper-top {
+    align-items: flex-start;
+  }
+
+  .paper-credit {
+    max-width: 12em;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  .paper-content {
+    flex: none;
+    grid-template-columns: minmax(0, 1fr);
+    margin-top: 24px;
+  }
+
+  /* Two cells side by side across the width, centred. */
+  .paper-content {
+    --cell: min(41vw, 200px);
+    justify-content: stretch;
+  }
+
+  .tz-pair {
+    justify-content: center;
+  }
+
+  .paper-intro {
+    margin: 32px 0 24px 0;
+  }
+
+  .splash-paper .paper-cta {
+    display: flex;
+    width: 100%;
+  }
+
+  /* In the flow at the end of the page, full bleed, pushed to the bottom
+     when the screen is taller than the content. */
+  .paper-wash {
+    position: relative;
+    flex: none;
+    margin: auto calc(-1 * var(--paper-side)) 0;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 50px);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 50px);
   }
 }

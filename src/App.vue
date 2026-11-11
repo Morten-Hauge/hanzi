@@ -48,7 +48,7 @@ export default {
     // the header.)
     showFooter() {
       if (this.$route.name === undefined) return false;
-      const ownCredit = ["split", "inkwash"].includes(SPLASH_VARIANT);
+      const ownCredit = ["split", "inkwash", "paper"].includes(SPLASH_VARIANT);
       return !(this.onSplash && ownCredit);
     },
   },

@@ -40,7 +40,9 @@ function pageCopies() {
           .replace(
             /<meta property="og:url" content="[^"]*" \/>/,
             `<meta property="og:url" content="${url}" />`
-          );
+          )
+          // The splash headline font isn't used on these pages.
+          .replace(/\s*<link\s+rel="preload"[^>]*instrument-serif[^>]*>/, "");
         const dir = path.join(outDir, page.path);
         fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(path.join(dir, "index.html"), copy);

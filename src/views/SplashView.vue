@@ -2,12 +2,14 @@
 import { SPLASH_VARIANT } from "@/config";
 import SplashClassic from "./SplashClassic.vue";
 import SplashInkwash from "./SplashInkwash.vue";
+import SplashPaper from "./SplashPaper.vue";
 import SplashSplit from "./SplashSplit.vue";
 import SplashTeach from "./SplashTeach.vue";
 
 const VARIANTS = {
   classic: "SplashClassic",
   inkwash: "SplashInkwash",
+  paper: "SplashPaper",
   split: "SplashSplit",
   teach: "SplashTeach",
 };
@@ -19,6 +21,7 @@ export default {
   components: {
     SplashClassic,
     SplashInkwash,
+    SplashPaper,
     SplashSplit,
     SplashTeach,
   },

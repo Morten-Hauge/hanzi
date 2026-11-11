@@ -7,4 +7,6 @@
 //               column; no footer bar.
 //   "inkwash" – SplashInkwash.vue: like split, but 汉字 on paper with an
 //               ink-wash print of the terraces; no footer bar.
-export const SPLASH_VARIANT = "inkwash";
+//   "paper"   – SplashPaper.vue: like inkwash, but paper and terraces across
+//               the full width (no navy column); no footer bar.
+export const SPLASH_VARIANT = "paper";
